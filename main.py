@@ -34,22 +34,17 @@ if __name__ == '__main__':
 
 
     @bot.message_handler(func=lambda message: True, content_types=['text'])
-    def add_answer_from_message(message: telebot.types.Message):
+    def add_answer_or_quest_from_message(message: telebot.types.Message):
         chat_id = message.chat.id
         if chat_id in data.keys():
             abbreviation = reduce(lambda a, b: a + b[0], [''] + message.text.split())
             if abbreviation.lower() == data[chat_id]['quest']:
                 add_answer(message)
-
-
-    @bot.message_handler(func=lambda message: True, content_types=['text'])
-    def start_quest_from_last_winner(message: telebot.types.Message):
-        chat_id = message.chat.id
-        if data[chat_id] and time.time() > data[chat_id]["end_voting"]:
-            if message.from_user.id == data[chat_id]["last_winner"] and len(message.text) == 3:
-                quest = message.text.lower()
-                start_game(chat_id, quest)
-                data[chat_id]["last_winner"] = message.from_user.id
+            if time.time() > data[chat_id]["end_voting"]:
+                if message.from_user.id == data[chat_id]["last_winner"] and len(message.text) == 3:
+                    quest = message.text.lower()
+                    start_game(chat_id, quest)
+                    data[chat_id]["last_winner"] = message.from_user.id
 
 
     def start_game(chat_id, quest):
