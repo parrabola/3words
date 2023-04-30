@@ -125,7 +125,7 @@ if __name__ == '__main__':
 
     # Это допишется позже
     def generate_q():
-        return "AAA"
+        return "абв"
 
 
     def check_status(data):
@@ -140,8 +140,10 @@ if __name__ == '__main__':
                     start_game(chat_id, quest=generate_q())
 
 
+    bot.polling(none_stop=True, interval=0)
     # Это заменится тредом
     while True:
+        print('check')
         check_status(data)
         time.sleep(1)
 
