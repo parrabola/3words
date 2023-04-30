@@ -27,7 +27,10 @@ if __name__ == '__main__':
 
     @bot.message_handler(commands=['play'])
     def start_game_from_command(message: telebot.types.Message):
-        start_game(message.chat.id, quest=generate_q())
+        if message.chat.id not in data.keys():
+            start_game(message.chat.id, quest=generate_q())
+        else:
+            bot.reply_to(message, "Руки на стол!! Раунд уже запущен")
 
 
     @bot.message_handler(func=lambda message: True, content_types=['text'])
@@ -48,24 +51,23 @@ if __name__ == '__main__':
                 start_game(chat_id, quest)
                 data[chat_id]["last_winner"] = message.from_user.id
 
-    def start_game(chat_id, quest):
-        if chat_id not in data.keys() or data[chat_id]["is_can_start"]:
-            data[chat_id] = {
-                "start": int(time.time()),
-                "is_wait_answers": True,
-                "is_voting": False,
-                "poll": None,
-                "end_answers": int(time.time() + config.wait_answers_time),
-                "end_voting": int(time.time() + config.wait_answers_time + config.vote_time),
-                "quest": quest,
-                "answers": {},
-                "last_winner": None
-            }
 
-            bot.send_message(chat_id, f"Задание: {quest}. У вас есть {config.wait_answers_time} секунд,"
-                                      f" чтобы прислать ваши ответы!\nПоехали!")
-        else:
-            bot.send_message(chat_id, "Руки на стол!! Раунд уже запущен")
+    def start_game(chat_id, quest):
+        data[chat_id] = {
+            "start": int(time.time()),
+            "is_wait_answers": True,
+            "is_voting": False,
+            "poll": None,
+            "end_answers": int(time.time() + config.wait_answers_time),
+            "end_voting": int(time.time() + config.wait_answers_time + config.vote_time),
+            "quest": quest,
+            "answers": {},
+            "last_winner": None
+        }
+
+        bot.send_message(chat_id, f"Задание: {quest}. У вас есть {config.wait_answers_time} секунд,"
+                                  f" чтобы прислать ваши ответы!\nПоехали!")
+
 
     def add_answer(message):
         chat_id = message.chat.id
@@ -79,6 +81,7 @@ if __name__ == '__main__':
             bot.reply_to(message, "Такой ответ уже был принят")
             return
         data[chat_id]["answers"][message.text.lower()] = message.from_user.id
+
 
     def start_voting(chat_id):
         answers = data[chat_id]['answers'].keys()
@@ -95,6 +98,7 @@ if __name__ == '__main__':
         else:
             bot.send_message(chat_id, "Никто не хочет играть. Я спать. Для начала новой игры введите '/Play'")
             data.pop(chat_id)
+
 
     def end_round(chat_id: str):
         poll = bot.stop_poll(chat_id, data[chat_id]["poll"])
@@ -123,9 +127,11 @@ if __name__ == '__main__':
                                   f"{config.winner_time} секунд для того, чтобы придумать задание, или это сделаю я!",
                          parse_mode="MarkdownV2")
 
-    #Это допишется позже
+
+    # Это допишется позже
     def generate_q():
         return "AAA"
+
 
     def check_status(data):
         timestamp = int(time.time())
@@ -140,7 +146,8 @@ if __name__ == '__main__':
                 if timestamp > data[chat_id]["end_voting"] + config.winner_time:
                     start_game(chat_id, quest=generate_q())
 
-    #Это заменится тредом
+
+    # Это заменится тредом
     while True:
         check_status(data)
         time.sleep(1)
