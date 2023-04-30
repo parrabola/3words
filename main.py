@@ -134,10 +134,8 @@ if __name__ == '__main__':
             for chat_id in data.keys():
                 if timestamp > data[chat_id]["end_answers"] and data[chat_id]["is_wait_answers"]:
                     start_voting(chat_id)
-                    return
                 if timestamp > data[chat_id]["end_voting"] and data[chat_id]["is_voting"]:
                     end_round(chat_id)
-                    return
                 if timestamp > data[chat_id]["end_voting"] + config.winner_time:
                     start_game(chat_id, quest=generate_q())
 
