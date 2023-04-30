@@ -6,3 +6,4 @@ min_answers_for_start_voting = 2
 token = "your_telegram_token_here"
 is_anonimous_polls = False
 is_allows_multiple_answers = False
+
