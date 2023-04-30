@@ -1,3 +1,4 @@
+import _thread
 from operator import itemgetter
 import telebot
 import config
@@ -6,27 +7,13 @@ from functools import reduce
 
 if __name__ == '__main__':
     bot = telebot.TeleBot(config.token)
-    data = {
-        "12312123": {
-            "start": 123465798,
-            "is_wait_answers": True,
-            "is_voting": False,
-            "end_answers": 123124,
-            "end_voting": 1231244,
-            "quest": 'asd',
-            "poll": 3112323,
-            "answers": {
-                "asymptotic stylish data": 12312312,
-                "anal stylish data": 12312312,
-                "anal stylish dristy": 12312344
-            },
-            "last_winner": 23423332
-        }
-    }
+    data = {}
+
 
 
     @bot.message_handler(commands=['play'])
     def start_game_from_command(message: telebot.types.Message):
+
         if message.chat.id not in data.keys():
             start_game(message.chat.id, quest=generate_q())
         else:
@@ -72,15 +59,15 @@ if __name__ == '__main__':
         if not data[chat_id]["is_wait_answers"]:
             bot.reply_to(message, 'Ты опоздал. Подожди начала следующего раунда!')
             return
-        if message.text.lower() in data["answers"].keys():
+        if message.text.lower() in data[chat_id]["answers"].keys():
             bot.reply_to(message, "Такой ответ уже был принят")
             return
         data[chat_id]["answers"][message.text.lower()] = message.from_user.id
-
+        bot.reply_to(message, "Добавил!")
 
     def start_voting(chat_id):
-        answers = data[chat_id]['answers'].keys()
-        if len(answers) > config.min_answers_for_start_voting:
+        answers = list(data[chat_id]['answers'].keys())
+        if len(answers) >= config.min_answers_for_start_voting:
             poll = bot.send_poll(chat_id=chat_id,
                                  question=f"Голосуем за лучший ответ! Задание - {data[chat_id]['quest']}",
                                  is_anonymous=config.is_anonimous_polls,
@@ -96,31 +83,34 @@ if __name__ == '__main__':
 
 
     def end_round(chat_id: str):
-        poll = bot.stop_poll(chat_id, data[chat_id]["poll"])
-        data[chat_id]['is_voting'] = False
+        if chat_id in data.keys():
+            poll = bot.stop_poll(chat_id, data[chat_id]["poll"])
+            data[chat_id]['is_voting'] = False
 
-        if poll.total_voter_count < config.min_votes_for_complete_quest:
-            bot.send_message(chat_id, "Слишком мало голосов. Старайтесь лучше! Я спать.\n"
-                                      "Для начала новой игры введите '/Play'")
-            data.pop(chat_id)
-            return
+            if poll.total_voter_count < config.min_votes_for_complete_quest:
+                bot.send_message(chat_id, "Слишком мало голосов. Старайтесь лучше! Я спать.\n"
+                                          "Для начала новой игры введите '/Play'")
+                data.pop(chat_id)
+                return
 
-        sorted_answers = sorted([(option.text, option.voter_count) for option in poll.options],
-                                reverse=True,
-                                key=itemgetter(1))
+            sorted_answers = sorted([(option.text, option.voter_count) for option in poll.options],
+                                    reverse=True,
+                                    key=itemgetter(1))
 
-        if sorted_answers[0][1] == sorted_answers[1][1]:
-            bot.send_message(chat_id, "Раунд закончен. Победила дружба!\nОтвратительно.\nВерните в чат ненависть! "
-                                      "А я пока спать. Для начала новой игры введите '/Play'")
-            data.pop(chat_id)
-            return
+            if sorted_answers[0][1] == sorted_answers[1][1]:
+                bot.send_message(chat_id, "Раунд закончен. Победила дружба!\nОтвратительно.\nВерните в чат ненависть! "
+                                          "А я пока спать. Для начала новой игры введите '/Play'")
+                data.pop(chat_id)
+                return
 
-        best_answer = sorted_answers[0][0]
-        winner = data[chat_id]["answers"][best_answer]
-        data[chat_id]["last_winner"] = winner
-        bot.send_message(chat_id, f"Победитель - tg://user?id=<{winner}> c его {best_answer.upper()}\nУ тебя есть "
-                                  f"{config.winner_time} секунд для того, чтобы придумать задание, или это сделаю я!",
-                         parse_mode="MarkdownV2")
+            best_answer = sorted_answers[0][0]
+            winner = data[chat_id]["answers"][best_answer]
+            user_text = bot.get_chat_member(chat_id, winner).user.full_name
+            data[chat_id]["last_winner"] = winner
+            bot.send_message(chat_id, f"Победитель - <a href='tg://user?id={winner}'>{user_text} </a>c его {best_answer.upper()}\nУ тебя есть "
+                                      f"{config.winner_time} секунд для того, чтобы придумать задание, или это сделаю я!",
+                             parse_mode='HTML'
+                             )
 
 
     # Это допишется позже
@@ -129,21 +119,20 @@ if __name__ == '__main__':
 
 
     def check_status(data):
-        timestamp = int(time.time())
-        if data.keys():
-            for chat_id in data.keys():
-                if timestamp > data[chat_id]["end_answers"] and data[chat_id]["is_wait_answers"]:
-                    start_voting(chat_id)
-                if timestamp > data[chat_id]["end_voting"] and data[chat_id]["is_voting"]:
-                    end_round(chat_id)
-                if timestamp > data[chat_id]["end_voting"] + config.winner_time:
-                    start_game(chat_id, quest=generate_q())
+        while True:
+            time.sleep(1)
+            print(data )
+            timestamp = int(time.time())
+            if data.keys():
+                for chat_id in data.keys():
+                    if timestamp > data[chat_id]["end_answers"] and data[chat_id]["is_wait_answers"]:
+                        start_voting(chat_id)
+                    if timestamp > data[chat_id]["end_voting"] and data[chat_id]["is_voting"]:
+                        end_round(chat_id)
+                    if timestamp > data[chat_id]["end_voting"] + config.winner_time:
+                        start_game(chat_id, quest=generate_q())
 
 
-    bot.polling(none_stop=True, interval=0)
+    _thread.start_new_thread(check_status, (data, ))
+    bot.polling(none_stop=True, interval=0,)
     # Это заменится тредом
-    while True:
-        print('check')
-        check_status(data)
-        time.sleep(1)
-
