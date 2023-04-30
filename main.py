@@ -24,14 +24,15 @@ if __name__ == '__main__':
     def add_answer_or_quest_from_message(message: telebot.types.Message):
         chat_id = message.chat.id
         if chat_id in data.keys():
-            abbreviation = reduce(lambda a, b: a + b[0], [''] + message.text.split())
-            if abbreviation.lower() == data[chat_id]['quest']:
-                add_answer(message)
-            if time.time() > data[chat_id]["end_voting"]:
-                if message.from_user.id == data[chat_id]["last_winner"] and len(message.text) == 3:
-                    quest = message.text.lower()
-                    start_game(chat_id, quest)
-                    data[chat_id]["last_winner"] = message.from_user.id
+            words = message.text.lower().split()
+            if len(words) == 3:
+                abbreviation = reduce(lambda a, b: a + b[0], words)
+                if abbreviation.lower() == data[chat_id]['quest']:
+                    add_answer(message)
+            if time.time() > data[chat_id]["end_voting"] and message.from_user.id == data[chat_id]["last_winner"] and len(message.text) == 3:
+                quest = message.text.lower()
+                start_game(chat_id, quest)
+                data[chat_id]["last_winner"] = message.from_user.id
 
 
     def start_game(chat_id, quest):
